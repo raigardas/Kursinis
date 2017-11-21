@@ -1,0 +1,586 @@
+---
+title: "Užimtumo Lietuvoje 2011-2016m. statistinė analizė"
+subtitle: "Antras juodraštis"
+author: "Milda Pieškutė, Raigardas Balužis"
+date: "November 6, 2017"
+output: pdf_document
+---
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(tidyr)
+
+
+#APRAŠOMOS FUNKCIJOS
+
+data <- read.csv("kursinioduomenys.csv", stringsAsFactors=FALSE, na.strings="NA")
+data_nedarbas <<-  read.csv("nedarbas.csv", dec = ",", stringsAsFactors=FALSE, na.strings="NA")  # statistikos departamento duomenys
+nedarbas_dep <<- rev(data_nedarbas$ReikÅ.mÄ.)
+
+data_uzimtumas <<- read.csv("uzimtumas.csv", dec = ",", stringsAsFactors=FALSE, na.strings="NA") # statistikos departamento duomenys
+uzimtumas_dep <<- rev(data_uzimtumas$ReikÅ.mÄ.)
+
+date <- ts(start = c(2011, 1), end = c(2016, 4), frequency = 4)
+
+
+org_duomenys <- function(){
+  sex <<- data$SEX
+  age <<- data$AGE
+  marstat <<- data$MARSTAT
+  wstator <<- data$WSTATOR
+  refyear <<- data$REFYEAR
+  region <<- data$REGION
+  qtr <<- data$KETVIRTIS
+}
+
+visu_stat <- function(){
+  ind <- which(age > 1 & age < 12)
+  wstator <- wstator[ind]
+  refyear <- refyear[ind]
+  region <- region[ind]
+  qtr <- qtr[ind]
+  
+  uzimti <- matrix(0, nrow = 6, ncol = 4)
+  bedarbiai <- matrix(0, nrow = 6, ncol = 4)
+  neaktyvus <- matrix(0, nrow = 6, ncol = 4)
+  visi <- matrix(0, nrow = 6, ncol = 4)
+  
+  for(year in 1:6){
+    for(quarter in 1:4){
+      uzimti[year, quarter] <- length(wstator[wstator == 1 & (refyear == 2010 + year & qtr == quarter)])
+      bedarbiai[year, quarter] <- length(wstator[wstator == 2 & refyear == 2010 + year & qtr == quarter])
+      neaktyvus[year, quarter] <- length(wstator[wstator == 9 & refyear == 2010 + year & qtr == quarter])
+      visi[year, quarter] <- length(wstator[refyear == 2010 + year & qtr == quarter])
+    }
+  }
+  
+  rownames(uzimti) <- 2011:2016
+  rownames(bedarbiai) <- 2011:2016
+  rownames(neaktyvus) <- 2011:2016
+  rownames(visi) <- 2011:2016
+  
+  uzimtumo_lygis <<- uzimti/visi
+  nedarbo_lygis <<- bedarbiai/(uzimti + bedarbiai)
+}
+
+vyru_stat <- function(){
+  ind <- which((age > 1 & age < 12) & sex == 1) #vyrai
+  wstator <- wstator[ind]
+  refyear <- refyear[ind]
+  region <- region[ind]
+  qtr <- qtr[ind]
+  
+  uzimti_v <- matrix(0, nrow = 6, ncol = 4)
+  bedarbiai_v <- matrix(0, nrow = 6, ncol = 4)
+  neaktyvus_v <- matrix(0, nrow = 6, ncol = 4)
+  visi_v <- matrix(0, nrow = 6, ncol = 4)
+  
+  for(year in 1:6){
+    for(quarter in 1:4){
+      uzimti_v[year, quarter] <- length(wstator[wstator == 1 & (refyear == 2010 + year & qtr == quarter)])
+      bedarbiai_v[year, quarter] <- length(wstator[wstator == 2 & refyear == 2010 + year & qtr == quarter])
+      neaktyvus_v[year, quarter] <- length(wstator[wstator == 9 & refyear == 2010 + year & qtr == quarter])
+      visi_v[year, quarter] <- length(wstator[refyear == 2010 + year & qtr == quarter])
+    }
+  }
+  
+  rownames(uzimti_v) <- 2011:2016
+  rownames(bedarbiai_v) <- 2011:2016
+  rownames(neaktyvus_v) <- 2011:2016
+  rownames(visi_v) <- 2011:2016
+  
+  uzimtumo_lygis_v <<- uzimti_v/visi_v
+  nedarbo_lygis_v <<- bedarbiai_v/(uzimti_v + bedarbiai_v)
+}
+
+moteru_stat <- function(){
+  ind <- which((age > 1 & age < 12) & sex == 2) #moterys
+  wstator <- wstator[ind]
+  refyear <- refyear[ind]
+  region <- region[ind]
+  qtr <- qtr[ind]
+  
+  uzimti_m <- matrix(0, nrow = 6, ncol = 4)
+  bedarbiai_m <- matrix(0, nrow = 6, ncol = 4)
+  neaktyvus_m <- matrix(0, nrow = 6, ncol = 4)
+  visi_m <- matrix(0, nrow = 6, ncol = 4)
+  
+  for(year in 1:6){
+    for(quarter in 1:4){
+      uzimti_m[year, quarter] <- length(wstator[wstator == 1 & (refyear == 2010 + year & qtr == quarter)])
+      bedarbiai_m[year, quarter] <- length(wstator[wstator == 2 & refyear == 2010 + year & qtr == quarter])
+      neaktyvus_m[year, quarter] <- length(wstator[wstator == 9 & refyear == 2010 + year & qtr == quarter])
+      visi_m[year, quarter] <- length(wstator[refyear == 2010 + year & qtr == quarter])
+    }
+  }
+  
+  rownames(uzimti_m) <- 2011:2016
+  rownames(bedarbiai_m) <- 2011:2016
+  rownames(neaktyvus_m) <- 2011:2016
+  rownames(visi_m) <- 2011:2016
+  
+  uzimtumo_lygis_m <<- uzimti_m/visi_m
+  nedarbo_lygis_m <<- bedarbiai_m/(uzimti_m + bedarbiai_m)
+}
+
+jaunimo_stat <- function(){
+  ind <- which(age == 2 | age == 3) #jaunimo 15 - 24 metų
+  wstator <- wstator[ind]
+  refyear <- refyear[ind]
+  region <- region[ind]
+  qtr <- qtr[ind]
+  
+  uzimti_j <- matrix(0, nrow = 6, ncol = 4)
+  bedarbiai_j <- matrix(0, nrow = 6, ncol = 4)
+  neaktyvus_j <- matrix(0, nrow = 6, ncol = 4)
+  visi_j <- matrix(0, nrow = 6, ncol = 4)
+  
+  for(year in 1:6){
+    for(quarter in 1:4){
+      uzimti_j[year, quarter] <- length(wstator[wstator == 1 & (refyear == 2010 + year & qtr == quarter)])
+      bedarbiai_j[year, quarter] <- length(wstator[wstator == 2 & refyear == 2010 + year & qtr == quarter])
+      neaktyvus_j[year, quarter] <- length(wstator[wstator == 9 & refyear == 2010 + year & qtr == quarter])
+      visi_j[year, quarter] <- length(wstator[refyear == 2010 + year & qtr == quarter])
+    }
+  }
+  
+  rownames(uzimti_j) <- 2011:2016
+  rownames(bedarbiai_j) <- 2011:2016
+  rownames(neaktyvus_j) <- 2011:2016
+  rownames(visi_j) <- 2011:2016
+  
+  uzimtumo_lygis_j <<- as.vector(t(uzimti_j/visi_j))
+  nedarbo_lygis_j <<- as.vector(t(bedarbiai_j/(uzimti_j + bedarbiai_j)))
+}
+
+#########################################
+
+# Grafikų funkcijos
+
+#oficialios statistikos lyginimas su apklausų rezultatais
+
+plot_uzimtumas_palyg <- function(){
+  ggplot(data = df_uzimtumas_palyg) + 
+    geom_line(mapping = aes(x = laikas, y = rodiklis_dep, color = "red")) +
+    geom_line(mapping = aes(x = laikas, y = rodiklis_mano, color = "green")) +
+    ylim(40, 75) +
+    xlab("Laikas") +
+    ylab("Vyrų ir moterų užimtumo lygis (%)") +
+    ggtitle("Užimtumo lygis | palyginimas") + 
+    scale_colour_discrete(name  ="Duomenų šaltinis", labels = c("Apklausos", "Stat. departamentas"))
+    
+}
+
+
+
+#užimtumo lygis: raudona - moterys, žalia - vyrai
+plot_uzimtumas_lytis <- function(){
+  ggplot(data = df_uzimtumas_l) + 
+    geom_line(mapping = aes(x = laikas, y = rodiklis_m, colour = "blue")) + 
+    geom_line(mapping = aes(x = laikas, y = rodiklis_v, colour = "red")) +
+    ylim(55, 75) +
+    xlab("Laikas") +
+    ylab("Vyrų ir moterų užimtumo lygis (%)") +
+    ggtitle("Užimtumo lygis") + 
+    scale_colour_discrete(name  ="Lytis", labels = c("Moterys", "Vyrai"))
+}
+
+
+
+plot_nedarbas_lytis <- function(){
+  ggplot(data = df_nedarbas_l) + 
+    geom_line(mapping = aes(x = laikas, y = rodiklis_m, colour = "blue")) + 
+    geom_line(mapping = aes(x = laikas, y = rodiklis_v, colour = "red")) +
+    ylim(0, 20) +
+    xlab("Laikas") +
+    ylab("Moterų ir vyrų nedarbo lygis (%)") +
+    ggtitle("Nedarbo lygis") +
+    scale_colour_discrete(name  ="Lytis", labels = c("Moterys", "Vyrai"))
+} 
+
+#jaunimo (15-24m) nedarbo lygis
+
+
+plot_nedarbas_jaunimas <- function(){
+  ggplot() + 
+    geom_line(mapping = aes(x = df_nedarbas_j$laikas, y = df_nedarbas_j$rodiklis, color = "red")) +
+    ylim(0, 50) +
+    xlab("Laikas") +
+    ylab("Nedarbo lygis (%)") +
+    ggtitle("Jaunimo (15-24 m.) nedarbo lygis") +
+    guides(color=FALSE)
+}
+
+################################################################################
+
+org_duomenys()
+visu_stat()
+org_duomenys()
+vyru_stat()
+org_duomenys()
+moteru_stat()
+org_duomenys()
+jaunimo_stat()
+
+df_uzimtumas_palyg <- data.frame(laikas = as.vector(t(time(date))),
+                                  rodiklis_dep = as.numeric(uzimtumas_dep),
+                                  rodiklis_mano = as.vector(t(uzimtumo_lygis)) * 100)
+
+df_uzimtumas_l <- data.frame(laikas = as.vector(t(time(date))),
+                            rodiklis_v = as.vector(t(uzimtumo_lygis_v)) * 100,
+                            rodiklis_m = as.vector(t(uzimtumo_lygis_m)) * 100)
+
+df_nedarbas_l <- data.frame(laikas = as.vector(t(time(date))),
+                            rodiklis_v = as.vector(t(nedarbo_lygis_v)) * 100,
+                            rodiklis_m = as.vector(t(nedarbo_lygis_m)) * 100)
+
+df_nedarbas_j <- data.frame(laikas = as.vector(t(time(date))), rodiklis = nedarbo_lygis_j*100)
+```
+
+
+# Turinys
+
+Įvadas
+
+Teorinis skyrius
+
+Pirminė duomenų analizė
+
+Statistinė duomenų analizė
+
+Rezultatai
+
+Išvados
+
+Literatūra
+
+Pridas
+
+
+\newpage
+
+# Įvadas
+  
+Šalies statistiniai užimtumo rodikliai yra vieni iš svarbiausių makroekonominių parametrų, kalbant apie šalies ekonominę sveikatą, formuojant politiką. Mūsų kursinio darbo tikslas buvo ištirti užimtumo pokyčius Lietuvoje 2011 – 2016 metais. Yra gana daug įdomių klausimų, kuriuos galima užduoti, kalbant apie darbo rinkos situaciją, tačiau mes nusprendėme pažiūrėti, kaip skiriasi neaktyvių ir bedarbių sudėtis, kaip keitėsi nedarbo ir užimtumo rodikliai, pažirėti, ar yra reikšmingų skirtumų kuriuos lemia regionai, lytis ar išsilavinimas.
+
+\newpage
+
+# Užimtumo tyrimų apžvalga
+
+Visų pirma, norėtume pažymėti, jog platesnių tyrimų, susijusių su užimtumu Lietuvoje nėra itin daug. Tai tik padidina šio darbo aktualumą ir svarbą. Turbūt reikšmingiausia analizė šia tema yra Eurostat'o "Užimtumo statistika", kuri leidžia pažvlegti į Lietuvos padėtį Europos kontekste. 
+
+Taigi pažvelgus į analizę "Užimtumo statistika" galime išskirti tokius svarbiausius teiginius:
+  
+  * 2016 m. buvo pasiektas didžiausias kada nors užregistruotas ES užimtumo vidurkis 20-64 m. amžiaus grupei. [Eurostat2]
+  
+  * Pagal 20-64 m. užimtųjų lygį valstybėje, Europą galima būtų skirstyti į kelias grupes:
+    šalys, kuriose užimtumo lygis siekia 70-79% (Lietuva, Latvija, Estija, Jungtinė Karalystė, Prancūzija, Vokietija, Suomija ir kt.)
+    šalys, kuriose užimtumo lygis siekia 60-69% (Ispanija, Italija, Kroatija, Lenkija, Slovakija, Rumunija, Bulgarija, Belgija ir kt.)
+    šalys, kuriose užimtumo lygis nesiekia 60% (buvusi Jugoslavijos Respublika, Makedonija, Graikija, Turkija ir kt.)
+
+  * Analizuojant užimtumo skirtumus tarp vyrų ir moterų pastebimas sumažėjęs skirtumas tarp lyčių. Daugiausia skirtumas mažėjo dėl išaugusio moterų užimtumo (Ispanija, Nyderlandai), tačiau ir dėl kai kurių valtybių vyrų užimtumo mažėjimo (Graikija, Kipras).
+  
+  * "Moterų užimtumo lygis mažesnis už vyrų užimtumo lygį visais metais visose šalyse, išskyrus dvi išimtis: Latviją ir Lietuvą 2010 m. po to, kai smarkiai sumažėjo vyrų užimtumo lygis ir daug mažiau sumažėjo moterų užimtumo lygis." [Eurostat1]
+
+  * Užimtumo lygis skiriasi ir nuo išsilavinimo. Tyrime pabrėžiama, kad tokiose valstybėse kaip Lietuva, Lenkija, Belgija, Bulgarija, Čekija ir kt. labai svarbu turėti bent vidutinio lygio išsilavinimą norint rasti darbą.
+  
+
+[Eurostat1]
+
+
+\newpage
+
+# Statistinė analizė
+
+### Duomenys
+
+Darbe naudojami 2011-2016 metų Gyventojų užimtumo statistinio tyrimo duomenys (angl. Labour force survey). Šis tyrimas atliekamas nuo 1998 m. Nuo 2002 m. skelbiami ketvirtiniai ir metiniai tyrimo rezultatai. Tyrimo ketvirčio imtis – apie 8 tūkst. namų ūkių. Vieno ketvirčio apklausoje dalyvauja apie 13 tūkst. 15 metų ir vyresnių gyventojų ir apie 2 tūkst. vaikų iki 15 metų amžiaus.  Tyrimas atliekamas visose Europos Sąjungos šalyse taikant tas pačias sąvokas ir klasifikatorius.
+
+Tyrime vartojamos šios sąvokos: 
+Bedarbis – nedirbantis 15–74 metų amžiaus asmuo, kuris aktyviai ieško darbo (per paskutines keturias savaites) ir per apibrėžtą laikotarpį (dvi savaites) gali pradėti dirbti. 
+
+Darbas ne visą darbo laiką – darbas, dirbamas ne visą teisės aktų ar kolektyvinės sutarties nustatytą darbo laiko trukmę. 
+
+Darbas visą darbo laiką – darbas, dirbamas visą teisės aktų ar kolektyvinės sutarties nustatytą darbo laiko trukmę. 
+
+Darbo jėga – užimti gyventojai ir bedarbiai. 
+
+Darbo jėgos aktyvumo lygis – rodiklis, išreiškiamas pasirinktos amžiaus grupės darbo jėgos ir to paties amžiaus visų gyventojų santykiu. 
+
+Ilgalaikis bedarbis – bedarbis, ieškantis darbo vienus metus ar ilgiau.
+
+Ilgalaikio nedarbo lygis – rodiklis, išreiškiamas ilgalaikių bedarbių ir darbo jėgos santykiu. 
+
+Namų ūkis – atskirai gyvenantis vienas asmuo arba grupė viename būste gyvenančių asmenų, kurie dalijasi išlaidas ir bendrai
+apsirūpina gyventi būtinomis priemonėmis. 
+
+Neaktyvūs gyventojai – nedirbantys ir neieškantys darbo gyventojai, kurių negalima priskirti nei prie užimtų gyventojų, nei prie bedarbių. Tai vaikai, nedirbantys mokiniai ir studentai, namų šeimininkės (-ai), nedirbantys pensininkai, neįgalieji, nuteistieji, asmenys, praradę viltį rasti darbą.
+
+Nedarbo lygis – rodiklis, išreiškiamas bedarbių ir darbo jėgos santykiu. 
+
+Samdomasis darbuotojas – asmuo, pagal sutartį su darbdaviu įsipareigojęs dirbti arba eiti tam tikras pareigas pagal darbovietėje nustatytą darbo tvarką ir gaunantis sulygtą darbo užmokestį. Įskaitomi dirbantys tiek pagal rašytinę darbo sutartį, tiek pagal žodinį susitarimą. 
+
+Savarankiškai be samdomųjų darbuotojų dirbantis asmuo – kitų darbuotojų nesamdantis asmuo, turintis savo verslą, dirbantis pagal verslo liudijimą ar ūkininkaujantis, negaunantis atlyginimo, bet turintis pelno, pajamų. 
+
+Savarankiškai su samdomaisiais darbuotojais dirbantis asmuo – bent vieną darbuotoją samdantis asmuo, turintis savo verslą ar ūkininkaujantis, negaunantis atlyginimo, bet turintis pelno, pajamų.
+
+Tiriamoji savaitė – laikotarpis, apie kurį renkami statistiniai duomenys. Savaitė prasideda pirmadienį ir baigiasi sekmadienį. Ketvirtį sudaro 13 savaičių, metus – 52 savaitės. 
+
+Užimti gyventojai – 15 metų ir vyresni asmenys, dirbantys bet kokį darbą, gaunantys už jį darbo užmokestį pinigais ar išmoką natūra arba turintys pajamų ar pelno. Tyrime užimtais gyventojais laikomi 15 metų ir vyresni gyventojai, tiriamąją savaitę ne trumpiau kaip valandą dirbę bet kokį darbą, už kurį gavo darbo užmokestį pinigais ar išmoką natūra ar iš kurio turėjo pelno ar pajamų, taip pat gyventojai, kurie turėjo darbą, bet tiriamąją savaitę laikinai nedirbo. 
+
+Užimtumo lygis – rodiklis, išreiškiamas pasirinktos amžiaus grupės užimtų gyventojų ir to paties amžiaus visų gyventojų santykiu.
+
+\newpage
+
+# Metodologija
+
+##1.	$chi^2$ kriterijus  
+Naudosime Pearson $\chi^2$ kriterijų. Jis naudojamas hipotezėms apie dviejų kategorinių kintamųjų nepriklausomumą tikrinti.  
+Tikrinant hipotezę naudojamas statistika:
+
+\[\tilde{\chi}^2=\sum_{i=1}^{r} \sum_{j=1}^c \frac{(O_{ij} - n\hat{p_{ij}})^2}{\hat{p_{ij}}}\]
+
+
+##2. Dvinarė logistinė regresija
+
+Dvinarė logistinė regresija naudojama tada, kai modeliuojamas dvi reikšmes įgyjantis kintamasis. $Y$ įgyjamos reikšmės yra kodai 0 ir 1. Modeliuojamas dvireikšmis kintamas Y priklauso nuo $X$, $Z$, $W$.  
+
+###2.1 Modelis
+
+Modelis sudaromas ne pačiam kintamajam, o jo tikimybių santykio logaritmui (_logit_ funkcijai) :
+
+$$logit(P(Y=1))=ln(\frac{ P(Y=1)}{1-P(Y=1)})=ln\frac{P(Y=1)}{P(Y=0)} =C +b_1X +b_2Z+b_3W$$
+
+Ekvivalentus užrašas yra $$P(Y= 1) = \frac{e^z} {1+e^z} = \frac{1} {1+e^-z},$$ kur $z = C +b_1 X + b_2 Z+b_3 W$.
+
+Koeficientų $C, b_1, b_2, b_3$ reikšmės nėra žinomos. Jų įverčiai $\hat{C}, \hat{b_1}, \hat{b_2}, \hat{b_3}$ gaunami panaudojus duomenis.
+
+Kokybinei analizei pakanka atsižvelgti į koeficientų reikšmes. Jeigu koeficientas prie kažkurio regresoriaus teigiamas, tai šiam regresoriui didėjant, tikimybė P(Y= 1) didėja. Jeigu koeficientas neigiamas, tai atitinkamam regresoriui didėjant, tikimybė P(Y=1) mažėja.
+
+###2.2	Galimybių santykis
+
+Galimybe vadinamas tikimybių santykis P(Y= 1)/ P(Y= 0). Jis parodo, kiek kartų viena Y reikšmė labiau tikėtina už kitą. Informacijos atžvilgiu galimybė tolygi tikimybei.
+
+Galimybių santykis parodo, kaip pasikeis tikimybių santykis (galimybė), kai atitinkamas regresorius padidės vienetu, fiksavus visų kitų regresorių reikšmes. Kai regresorius X padidėja vientu, ankstesnis tikimybių santykis pasikeičia $e^{\hat{b_1}}$ kartų.
+
+Galima sakyti, kad didesnis už vienetą galimybių santykis rodo, kiek kartų, palyginti su ankstesne galimybe, tampa labiau tikėtina, kad $Y= 1$, o ne $Y= 0$. Jei galimybių santykis mažiau už vienetą, jo atvirkštinė reikšmė rodo, kiek kartų, palyginti su ankstesne galimybe, tampa mažiau tikėtina, kad $Y= 1$, o ne $Y= 0$.
+
+[Taikomoji regresinė analizė socialiniuose tyrimuose. Vydas Čekanavičius, Gediminas Murauskas]
+
+\newpage
+
+# Pirminė duomenų analizė
+
+Tikriname, ar mūsų apklausos duomenys apie nedarbo ir užimtumo lygius sutampa su statistikos departamento pateikiamais duomenimis.
+(dar bus sutvarkytas grafikas)
+
+Vaizduojami 15 - 64 m. amžiaus žmonių duomenys.
+
+```{r  echo = FALSE, message = FALSE, warning = FALSE}
+plot_uzimtumas_palyg()
+```
+
+
+raudona - moterys, žalia - vyrai
+
+1. Užimtumas (vyrai, moterys)
+
+(legendos dar bus sutvarkytos)
+
+```{r echo = FALSE}
+plot_uzimtumas_lytis()
+```
+
+
+raudona - moterys, žalia - vyrai
+
+
+2. Nedarbas (vyrai, moterys)
+
+```{r echo = FALSE}
+plot_nedarbas_lytis()
+```
+
+
+
+3. Jaunimo nedarbas
+
+```{r echo = FALSE}
+plot_nedarbas_jaunimas()
+```
+
+4. Nedarbo lygio kitimas pagal apskritis
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+regionas <- rep(c("Alytaus apskritis", "Kauno apskritis", "Klaipėdos apskritis",
+              "Marijampolės apskritis", "Panevežio apskritis", "Šiaulių apskritis",
+              "Tauragės apskritis", "Telšių apskritis", "Utenos apskritis", 
+              "Vilniaus apskritis"), each = 6)
+
+data2 <- data %>% select(SEX, AGE, WSTATOR, REGION, REFYEAR) %>%
+  filter(AGE > 2 & AGE < 12) %>%
+  group_by(REGION, REFYEAR) %>%
+  summarise(uzimti = sum(WSTATOR == 1), bedarbiai = sum(WSTATOR == 2), neaktyvus = sum(WSTATOR == 3)) %>% 
+  data.frame()
+
+names(data2) <- c("Regionas", "Metai", "Uzimtieji", "Bedarbiai", "Neaktyvūs")
+
+data2[, 1] <- regionas
+
+
+data3 <- data2 %>% mutate(DarboJega = Bedarbiai + Uzimtieji,
+                          NedarboLygis = (Bedarbiai / DarboJega) * 100)
+
+data3
+
+ggplot(data3, aes(Metai, NedarboLygis)) +   
+  geom_line(aes(colour = Regionas), size = 1)
+```
+
+5. Neužimtųjų pasiskirstymas pagal amžių
+
+```{r echo = FALSE, message = FALSE, warning = FALSE}
+data6 <- data
+data6$AGE <- as.factor(data6$AGE)
+
+# neuzimtu sudetis  
+data6 <- data %>%
+  filter(AGE > 1 & AGE < 14 & (WSTATOR == 2 | WSTATOR == 3)) %>% 
+  select(AGE, WSTATOR) %>% 
+  group_by(AGE) %>% 
+  summarise(n = n()) %>% 
+  data.frame()
+  
+amzius <- c("15-19 metų", "20-24 metų", "25-29 metų", "30-34 metų", "35-39 metų",
+            "40-44 metų", "45-49 metų", "50-54 metų", "55-59 metų", "60-64 metų",
+            "65-69 metų", "70-74 metų")
+
+data6[,1] <- amzius
+data6$n <- data6$n / sum(data6$n) * 100
+
+
+ggplot(data = data6, aes(x = AGE, y = n)) +
+  geom_bar(stat="identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 0.5)) +
+  xlab("Amžius") +
+  ylab("Dalis visų neužimtu") +
+  ggtitle("Neužimtųjų pasiskirstymas pagal amžių") 
+  
+```
+
+
+\newpage
+
+# 3. Ekonometrinė duomenų analizė
+
+## 3.1 Dvinarė logistinė regresija
+
+Vertiname logistinės regresijos modelį, kur Y yra dirbantis/nedirbantis. Pirmiausia tenka sujungti neužimtus ir bedarbius ir išmest jaunesnius nei 15 metų asmenis, nes jiems nepriskiriamas ekonominio aktyvumo statusas.
+
+Chi kvadrato taikymai atrinktiems duomenims
+
+Tiriami neaktyvūs arba bedarbiai, nuo 25 iki 54 metų amžiaus, nesimokantys, jau turėję darbą.
+
+```{r}
+datachi <- data %>% filter(WSTATOR %in% c(2, 3)) %>% filter(AGE %in% c(4:9)) %>% filter(EXISTPR==1) %>% filter(!(LEAVREAS==04))
+```
+
+```{r}
+library(corrplot)
+
+table(datachi$MARSTAT, datachi$WSTATOR)
+
+chisq <- chisq.test(datachi$MARSTAT, datachi$WSTATOR)
+
+corrplot(chisq$residuals, is.cor = FALSE)
+
+```
+
+
+
+```{r}
+data <- data%>% filter(REFYEAR==2016)%>% mutate(HATFIELD= ifelse(HATFIELD==0400, 0300, ifelse(HATFIELD %in% c(0500,0600), 0400, ifelse((HATFIELD==0700), 0500, ifelse((HATFIELD==0800), 0600, ifelse((HATFIELD==0900), 0700, ifelse(HATFIELD==1000, 0800, ifelse(HATFIELD==0100, 0100, ifelse(HATFIELD==0200, 0200, ifelse(HATFIELD==0300, 0300, ifelse(HATFIELD==9999, 9999, 0)))))))))))
+                             
+                                              
+dataLR <- data %>% filter(!WSTATOR==9)%>%
+  filter(AGE>1)%>%
+  mutate(WSTATOR = ifelse(WSTATOR ==1, 1, 0)) %>%
+  mutate(issilavinimo_tipas = factor(ifelse(HATFIELD %in% c(000,0000), "bendrasis", ifelse(HATFIELD %in% c(100,0100,0900,700,800,1000), "svietimas ir sveikatos prieziura, paslaugos", ifelse(HATFIELD %in% c(200,0200), "humanitariniai mokslai", ifelse(HATFIELD%in%c(300,0300,0400), "socialiniai mokslai", ifelse(HATFIELD %in% c(400,0400,500,0500), "gamtos mokslai, matematika, informatika, inzinerija", ifelse(HATFIELD %in% c(600,0800), "zemes ukis ir veterinarija", ifelse(HATFIELD %in% c(999,9999), "netaikoma", "nezinoma"))))))))) %>%
+  select(WSTATOR, SEX, AGE, MARSTAT, HATFIELD, HATLEVEL, REFYEAR, REFWEEK, REGION, issilavinimo_tipas) %>%
+  filter(!(issilavinimo_tipas %in% c("nezinoma", "netaikoma")))
+```
+
+
+```{r}
+modLR<- glm(factor(WSTATOR) ~ issilavinimo_tipas + AGE + I(AGE^2)+ factor(HATLEVEL), family = binomial(logit), data = dataLR)
+
+summary(modLR)
+
+```
+
+Matome, kad visi koeficientai reikšmingi.
+
+```{r}
+exp(summary(modLR)$coefficients[2:9, 2])
+```
+
+Matome, kad didžiausią įtaką turi išsilavinimo lygis. Tikėtina, kad aukščiausią (ISCED 5-6) išsilavinimą turintys žmonės bus įdarbinti.
+
+```{r}
+
+modLR.reduced <- glm(factor(WSTATOR) ~ 1, family = binomial, data = dataLR)
+
+
+anova(modLR.reduced, modLR, test = "Chisq")
+```
+ANOVA rodo, kad tikėtina, kad logistinės regresijos modelis  tinka.
+
+
+```{r}
+rkvadrat <- 1-modLR$deviance/modLR$null.deviance
+rkvadrat
+```
+
+R kvadratas viršija 0,2, taigi modelis atrodo tinkamas.
+
+
+
+
+# Statistinė duomenų analizė
+
+Chi kvadratas
+
+```{r echo = FALSE}
+
+chisq <- chisq.test(table(data$SEX, data$WSTATOR)[,c(1:3)])
+
+chisq
+
+colnames(chisq$residuals) <- c("Užimtasis","Bedarbis", "Neaktyvus")
+
+rownames(chisq$residuals) <- c("Vyras", "Moteris")
+
+corrplot(chisq$residuals, is.cor = FALSE)
+
+```
+
+
+Panašu, kad vyrai dažniau įtraukiami prie bedarbių, tačiau neįtraukiami prie neaktyvių, moterys atvirkščiai.
+
+\newpage
+
+# Literatūros sąrašas
+
+Statistikos departamento puslapis
+
+https://osp.stat.gov.lt/documents/10180/130368/Gyventoj%C5%B3_uzimtumo_statistinio_tyrimo_metodika_2013.pdf
+
+http://www.sthda.com/english/wiki/chi-square-test-of-independence-in-r
+
+http://www.statistika.mif.vu.lt/wp-content/uploads/2014/04/regresine-analize.pdf
+
+[Eurostat1] http://ec.europa.eu/eurostat/statistics-explained/index.php/Employment_statistics/lt
+
+[Eurostat2] http://ec.europa.eu/eurostat/statistics-explained/index.php/Glossary:Labour_force_survey_(LFS)
